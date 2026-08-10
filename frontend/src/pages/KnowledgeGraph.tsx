@@ -1,135 +1,194 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ForceGraph2D from 'react-force-graph-2d';
+import { Network, RefreshCw, Loader2, Lightbulb, PenTool } from 'lucide-react';
 
-interface Node {
-  id: string;
-  label: string;
-  type: string;
-  val?: number;
-}
+interface Node { id: string; label: string; type: string; val?: number }
+interface Edge { source: string; target: string; label?: string; weight?: number }
+interface GraphData { nodes: Node[]; links: Edge[]; insights: any[] }
 
-interface Edge {
-  source: string;
-  target: string;
-  label?: string;
-  weight?: number;
-}
-
-interface GraphData {
-  nodes: Node[];
-  links: Edge[];
-  insights: any[];
-}
+const NODE_COLORS: Record<string, string> = {
+  product: '#00AA5B', category: '#3b82f6', content: '#f59e0b',
+  creator: '#8b5cf6', audience: '#ec4899', conversion: '#06b6d4',
+};
+const NODE_LEGEND = [
+  { type: 'product', label: 'Produk' }, { type: 'category', label: 'Kategori' },
+  { type: 'content', label: 'Konten' }, { type: 'creator', label: 'Creator' },
+  { type: 'audience', label: 'Audience' }, { type: 'conversion', label: 'Konversi' },
+];
 
 export default function KnowledgeGraph() {
   const { productId } = useParams<{ productId: string }>();
+  const navigate = useNavigate();
   const [data, setData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [building, setBuilding] = useState(false);
 
-  useEffect(() => {
+  const fetchGraph = () => {
     if (!productId) return;
+    setLoading(true);
     axios.get(`/api/knowledge/graph/${productId}`)
       .then(res => {
         const payload = res.data.data;
         if (payload) {
-          // react-force-graph uses 'source' and 'target' instead of 'from' and 'to'
-          const links = payload.edges.map((e: any) => ({
-            source: e.from,
-            target: e.to,
-            label: e.label,
-            weight: e.weight
-          }));
+          const links = payload.edges.map((e: any) => ({ source: e.from, target: e.to, label: e.label, weight: e.weight }));
           setData({ nodes: payload.nodes, links, insights: payload.insights });
-        }
+        } else { setData(null); }
       })
-      .catch(err => console.error("Error fetching graph:", err))
+      .catch(err => console.error('Graph error:', err))
       .finally(() => setLoading(false));
-  }, [productId]);
+  };
+
+  const handleBuild = () => {
+    setBuilding(true);
+    axios.post(`/api/knowledge/build/${productId}`)
+      .then(() => setTimeout(() => fetchGraph(), 2000))
+      .finally(() => setBuilding(false));
+  };
+
+  useEffect(() => { fetchGraph(); }, [productId]);
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <Loader2 size={32} className="animate-spin text-[#00AA5B]" />
+        <p className="text-slate-400 text-sm">Memuat knowledge graph...</p>
       </div>
     );
   }
 
   if (!data || data.nodes.length === 0) {
     return (
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center">
-        <h3 className="text-xl font-semibold text-slate-800 mb-2">Knowledge Graph Kosong</h3>
-        <p className="text-slate-500 mb-6">Belum ada data relasi untuk produk ini.</p>
-        <button 
-          onClick={() => axios.post(`/api/knowledge/build/${productId}`)}
-          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-        >
-          Build Graph Sekarang
-        </button>
+      <div className="space-y-5 animate-in">
+        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <Network size={20} className="text-[#00AA5B]" />Affiliate Knowledge Graph
+        </h2>
+        <div className="card p-12 text-center">
+          <div className="w-16 h-16 bg-[#E8F8EF] rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Network size={32} className="text-[#00AA5B]" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 mb-2">Graph Belum Dibuat</h3>
+          <p className="text-slate-500 text-sm mb-6">Belum ada data relasi untuk produk #{productId}.</p>
+          <button onClick={handleBuild} disabled={building}
+            className="btn-primary disabled:opacity-50">
+            {building ? <><Loader2 size={16} className="animate-spin" />Membangun...</> : <><Network size={16} />Build Graph</>}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800">Affiliate Knowledge Graph</h2>
-        <button 
-          onClick={() => axios.post(`/api/knowledge/build/${productId}`).then(() => window.location.reload())}
-          className="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition font-medium"
-        >
-          ⟳ Rebuild Graph
-        </button>
+    <div className="space-y-5 animate-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <Network size={20} className="text-[#00AA5B]" />Affiliate Knowledge Graph
+          </h2>
+          <p className="text-slate-500 text-sm mt-0.5">{data.nodes.length} node · {data.links.length} relasi · Produk #{productId}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate(`/content?productId=${productId}`)} className="btn-secondary text-sm">
+            <PenTool size={15} />Generate Konten
+          </button>
+          <button onClick={handleBuild} disabled={building} className="btn-secondary text-sm disabled:opacity-50">
+            <RefreshCw size={15} className={building ? 'animate-spin' : ''} />
+            {building ? 'Rebuilding...' : 'Rebuild'}
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100 h-[600px] overflow-hidden">
+      {/* Legend */}
+      <div className="card px-4 py-3 flex flex-wrap items-center gap-4">
+        {NODE_LEGEND.map(n => (
+          <div key={n.type} className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: NODE_COLORS[n.type] }} />
+            <span className="text-xs text-slate-500">{n.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+        {/* Graph */}
+        <div className="lg:col-span-3 card overflow-hidden h-[520px]">
           <ForceGraph2D
             graphData={data}
+            backgroundColor="#ffffff"
             nodeLabel="label"
-            nodeAutoColorBy="type"
-            linkColor={() => '#cbd5e1'}
+            linkColor={() => '#e2e8f0'}
+            linkWidth={1.5}
             nodeCanvasObject={(node: any, ctx, globalScale) => {
-              const label = node.label;
-              const fontSize = 12/globalScale;
-              ctx.font = `${fontSize}px Sans-Serif`;
-              const textWidth = ctx.measureText(label).width;
-              const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2); 
-              
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-              ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y - bckgDimensions[1] / 2, bckgDimensions[0], bckgDimensions[1]);
-              
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillStyle = node.color || '#4f46e5';
-              ctx.fillText(label, node.x, node.y);
+              const nodeColor = NODE_COLORS[node.type] || '#94a3b8';
+              const fontSize = Math.max(9, 11 / globalScale);
 
-              node.__bckgDimensions = bckgDimensions;
+              // Draw outer glow
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, 9, 0, 2 * Math.PI);
+              ctx.fillStyle = nodeColor + '25';
+              ctx.fill();
+
+              // Draw circle
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, 6, 0, 2 * Math.PI);
+              ctx.fillStyle = nodeColor;
+              ctx.fill();
+
+              // White border
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, 6, 0, 2 * Math.PI);
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              // Label
+              ctx.font = `500 ${fontSize}px Inter, sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'top';
+              ctx.fillStyle = '#475569';
+              ctx.fillText(node.label, node.x, node.y + 9);
+
+              node.__bckgDimensions = [ctx.measureText(node.label).width, fontSize];
             }}
             nodePointerAreaPaint={(node: any, color, ctx) => {
               ctx.fillStyle = color;
-              const bckgDimensions = node.__bckgDimensions;
-              bckgDimensions && ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y - bckgDimensions[1] / 2, bckgDimensions[0], bckgDimensions[1]);
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, 12, 0, 2 * Math.PI);
+              ctx.fill();
             }}
           />
         </div>
 
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold text-slate-800">Insights</h3>
+        {/* Insights */}
+        <div className="space-y-3">
+          <h3 className="section-title">
+            <Lightbulb size={16} className="text-amber-500" />AI Insights
+          </h3>
           {data.insights.length > 0 ? (
-            data.insights.map((insight, idx) => (
-              <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 border-l-4 border-l-indigo-500">
-                <span className="text-xs font-bold text-indigo-500 uppercase">{insight.insightType}</span>
-                <p className="font-semibold text-slate-800 mt-1">{insight.value}</p>
-                <div className="flex justify-between items-center mt-3 text-xs text-slate-500">
-                  <span>Confidence: {(insight.confidence * 100).toFixed(0)}%</span>
-                  <span>Sample: {insight.sampleSize}</span>
+            <div className="space-y-3 max-h-[470px] overflow-y-auto pr-0.5">
+              {data.insights.map((insight, idx) => (
+                <div key={idx} className="card border-l-4 border-l-[#00AA5B] p-4">
+                  <span className="text-[10px] font-bold text-[#00AA5B] uppercase tracking-wider block mb-1">
+                    {insight.insightType}
+                  </span>
+                  <p className="text-sm font-semibold text-slate-800 leading-snug">{insight.value}</p>
+                  <div className="flex items-center justify-between mt-2 text-[10px] text-slate-400">
+                    <span>Confidence: <span className="text-[#00AA5B] font-bold">{(insight.confidence * 100).toFixed(0)}%</span></span>
+                    <span>n={insight.sampleSize}</span>
+                  </div>
+                  <div className="h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+                    <div className="h-full bg-[#00AA5B] rounded-full" style={{ width: `${insight.confidence * 100}%` }} />
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           ) : (
-            <p className="text-slate-500 text-sm">Belum ada insight yang cukup untuk produk ini.</p>
+            <div className="card p-5 text-center">
+              <Lightbulb size={24} className="mx-auto mb-2 text-slate-200" />
+              <p className="text-sm text-slate-400">Belum ada insight.</p>
+              <p className="text-xs text-slate-300 mt-1">Insight muncul setelah data performa konten cukup.</p>
+            </div>
           )}
         </div>
       </div>

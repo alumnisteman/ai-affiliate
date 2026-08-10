@@ -2,8 +2,122 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @layer base {
-  body {
-    @apply bg-slate-50 text-slate-900;
+  * {
+    box-sizing: border-box;
   }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    @apply bg-[#F3F4F6] text-slate-800 antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+}
+
+@layer components {
+  /* Tokopedia-style green primary button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#00AA5B] hover:bg-[#00924E] active:bg-[#007D43] text-white font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-50 text-slate-700 font-semibold rounded-xl border border-slate-200 transition-all duration-150 shadow-sm;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium rounded-lg transition-all duration-150;
+  }
+
+  /* Card style */
+  .card {
+    @apply bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+  .card-flat {
+    @apply bg-white rounded-2xl border border-slate-200/80;
+  }
+
+  /* Stat card with green left accent */
+  .stat-card {
+    @apply bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 border-l-4;
+  }
+
+  /* Badge styles */
+  .badge-green {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 bg-[#E8F8EF] text-[#00AA5B] text-xs font-semibold rounded-full;
+  }
+  .badge-orange {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 bg-orange-50 text-orange-600 text-xs font-semibold rounded-full;
+  }
+  .badge-blue {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 text-xs font-semibold rounded-full;
+  }
+  .badge-red {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-600 text-xs font-semibold rounded-full;
+  }
+  .badge-gray {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full;
+  }
+
+  /* Sidebar nav item */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-[#F0FBF5] hover:text-[#00AA5B] transition-all duration-150 cursor-pointer;
+  }
+  .nav-item-active {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold bg-[#E8F8EF] text-[#00AA5B] transition-all duration-150 cursor-pointer;
+  }
+
+  /* Input field */
+  .input-field {
+    @apply w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00AA5B]/30 focus:border-[#00AA5B] transition-all duration-150;
+  }
+  .select-field {
+    @apply w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#00AA5B]/30 focus:border-[#00AA5B] transition-all duration-150 cursor-pointer;
+  }
+
+  /* Section title */
+  .section-title {
+    @apply text-base font-bold text-slate-800 flex items-center gap-2;
+  }
+
+  /* Progress bar */
+  .progress-green {
+    @apply h-full rounded-full bg-gradient-to-r from-[#00AA5B] to-[#42C97A];
+  }
+}
+
+@layer utilities {
+  .text-primary { color: #00AA5B; }
+  .bg-primary { background-color: #00AA5B; }
+  .bg-primary-light { background-color: #E8F8EF; }
+  .border-primary { border-color: #00AA5B; }
+  .ring-primary { --tw-ring-color: #00AA5B; }
+  
+  /* Glassmorphism card */
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/50;
+  }
+
+  /* Animation utilities */
+  .animate-in {
+    animation: fadeInUp 0.3s ease-out forwards;
+  }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

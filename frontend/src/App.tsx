@@ -1,117 +1,312 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PackageSearch, Network, AlertTriangle, Link as LinkIcon, PenTool, BarChart3, Menu, X, Sparkles } from 'lucide-react';
+import axios from 'axios';
+import {
+  LayoutDashboard, PackageSearch, Network, AlertTriangle,
+  Link as LinkIcon, PenTool, BarChart3, Menu, X, Sparkles,
+  TrendingUp, DollarSign, MousePointerClick, Target, Bell,
+  ChevronRight, ShoppingBag
+} from 'lucide-react';
 import KnowledgeGraph from './pages/KnowledgeGraph';
 import ViralDashboard from './pages/ViralDashboard';
 import LinksPage from './pages/LinksPage';
+import ProductsPage from './pages/ProductsPage';
+import AIContentPage from './pages/AIContentPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
-function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
+/* ─── Sidebar ─── */
+function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (v: boolean) => void }) {
   const navItems = [
-    { to: "/", icon: <LayoutDashboard size={20} />, label: "Overview" },
-    { to: "/products", icon: <PackageSearch size={20} />, label: "Produk" },
-    { to: "/knowledge/1", icon: <Network size={20} />, label: "Knowledge Graph" },
-    { to: "/viral", icon: <AlertTriangle size={20} />, label: "Viral Warning" },
-    { to: "/links", icon: <LinkIcon size={20} />, label: "Link Affiliate" },
-    { to: "/content", icon: <PenTool size={20} />, label: "AI Content" },
-    { to: "/analytics", icon: <BarChart3 size={20} />, label: "Analitik" },
+    { to: '/', icon: <LayoutDashboard size={18} />, label: 'Dashboard', exact: true },
+    { to: '/products', icon: <PackageSearch size={18} />, label: 'Produk' },
+    { to: '/viral', icon: <AlertTriangle size={18} />, label: 'Viral Warning' },
+    { to: '/knowledge/1', icon: <Network size={18} />, label: 'Knowledge Graph' },
+    { to: '/links', icon: <LinkIcon size={18} />, label: 'Link Affiliate' },
+    { to: '/content', icon: <PenTool size={18} />, label: 'AI Content' },
+    { to: '/analytics', icon: <BarChart3 size={18} />, label: 'Analitik' },
   ];
 
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
+        <div
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
-      
       <aside className={`
-        fixed md:sticky top-0 left-0 h-screen w-64 z-50
-        bg-gradient-to-b from-slate-900 to-slate-950 text-slate-300
-        border-r border-slate-800 shadow-2xl transition-transform duration-300 ease-in-out
-        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        fixed lg:sticky top-0 left-0 h-screen w-60 z-50
+        bg-white border-r border-slate-200 shadow-sm flex flex-col
+        transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="flex items-center justify-between p-6 h-20 border-b border-slate-800/50">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-tr from-blue-600 to-purple-500 p-2 rounded-lg text-white shadow-lg shadow-blue-500/20">
-              <Sparkles size={24} />
+        {/* Logo */}
+        <div className="flex items-center justify-between px-5 h-16 border-b border-slate-100 flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-[#00AA5B] rounded-lg flex items-center justify-center shadow-sm">
+              <Sparkles size={16} className="text-white" />
             </div>
-            <h1 className="text-lg font-bold text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-              AI Affiliate OS
-            </h1>
+            <div>
+              <p className="font-black text-slate-800 text-sm leading-none tracking-tight">AI Affiliate OS</p>
+              <p className="text-[10px] text-slate-400 leading-none mt-0.5">Intelligence Platform</p>
+            </div>
           </div>
-          <button className="md:hidden text-slate-400 hover:text-white" onClick={() => setIsOpen(false)}>
-            <X size={24} />
+          <button className="lg:hidden text-slate-400 hover:text-slate-600 p-1 rounded-lg" onClick={() => setIsOpen(false)}>
+            <X size={20} />
           </button>
         </div>
 
-        <nav className="p-4 space-y-1.5 overflow-y-auto h-[calc(100vh-5rem)]">
-          {navItems.map((item) => (
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 py-2 mt-1">Menu Utama</p>
+          {navItems.map(item => (
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.exact}
               onClick={() => setIsOpen(false)}
-              className={({ isActive }) => `
-                flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
-                ${isActive 
-                  ? 'bg-blue-600/10 text-blue-400 font-medium border border-blue-500/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]' 
-                  : 'hover:bg-slate-800/50 hover:text-slate-100 hover:translate-x-1'
-                }
-              `}
+              className={({ isActive }) =>
+                isActive ? 'nav-item-active' : 'nav-item'
+              }
             >
-              <div className={`transition-colors ${
-                // Use a different color logic for active icon if needed, here we rely on text color cascade
-                'group-hover:text-white'
-              }`}>
-                {item.icon}
-              </div>
+              {item.icon}
               <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
+
+        {/* Bottom user section */}
+        <div className="p-4 border-t border-slate-100 flex-shrink-0">
+          <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#00AA5B] to-[#42C97A] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+              A
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-800 truncate">Demo User</p>
+              <p className="text-[11px] text-slate-400 truncate">Growth Plan</p>
+            </div>
+          </div>
+        </div>
       </aside>
     </>
   );
 }
 
-function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+/* ─── Header ─── */
+function Header({ onMenuClick }: { onMenuClick: () => void }) {
   const location = useLocation();
+  const PAGE_TITLES: Record<string, string> = {
+    '/': 'Dashboard',
+    '/products': 'Produk & Opportunity',
+    '/viral': 'Viral Early Warning',
+    '/links': 'Link Affiliate',
+    '/content': 'AI Content Generator',
+    '/analytics': 'Analitik & Content DNA',
+  };
+  const title = PAGE_TITLES[location.pathname] ||
+    (location.pathname.startsWith('/knowledge') ? 'Knowledge Graph' : 'Dashboard');
 
   return (
-    <div className="flex min-h-screen bg-[#0B1120]">
-      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-      
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 flex items-center justify-between h-20 px-6 bg-[#0B1120]/80 backdrop-blur-md border-b border-slate-800/50">
-          <div className="flex items-center gap-4">
-            <button 
-              className="md:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <Menu size={24} />
-            </button>
-            <h2 className="text-xl font-semibold text-slate-100 capitalize">
-              {location.pathname === '/' ? 'Overview' : location.pathname.split('/')[1].replace('-', ' ')}
-            </h2>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 px-4 py-2 bg-slate-800/50 rounded-full border border-slate-700/50 shadow-inner">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"></div>
-              <span className="text-sm font-medium text-slate-300">System Online</span>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-blue-500 p-[2px] shadow-lg">
-              <div className="w-full h-full rounded-full bg-slate-900 border-2 border-transparent flex items-center justify-center text-sm font-bold text-white">
-                AD
-              </div>
-            </div>
-          </div>
-        </header>
+    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-5 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm flex-shrink-0">
+      <div className="flex items-center gap-3">
+        <button
+          className="lg:hidden p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition"
+          onClick={onMenuClick}
+        >
+          <Menu size={20} />
+        </button>
+        <h1 className="text-base font-bold text-slate-800">{title}</h1>
+      </div>
 
-        <div className="flex-1 overflow-auto p-4 md:p-8">
-          <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center gap-2">
+        {/* Status indicator */}
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-[#E8F8EF] rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#00AA5B] animate-pulse" />
+          <span className="text-xs font-semibold text-[#00AA5B]">11 Engines Aktif</span>
+        </div>
+
+        {/* Notification bell */}
+        <button className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition">
+          <Bell size={20} />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+        </button>
+      </div>
+    </header>
+  );
+}
+
+/* ─── Dashboard Overview (with real data) ─── */
+function Overview() {
+  const navigate = useLocation();
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    axios.get('/api/dashboard')
+      .then(res => setData(res.data))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const fmt = (n: number) => n >= 1_000_000
+    ? `Rp ${(n / 1_000_000).toFixed(1)}M`
+    : n >= 1_000 ? `Rp ${(n / 1_000).toFixed(0)}K` : `Rp ${n}`;
+
+  const stats = data ? [
+    { label: 'Total Klik', value: data.summary.totalClicks.toLocaleString('id-ID'), icon: <MousePointerClick size={20} />, color: 'border-blue-500', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', trend: null },
+    { label: 'Total Pesanan', value: data.summary.totalOrders.toLocaleString('id-ID'), icon: <ShoppingBag size={20} />, color: 'border-[#00AA5B]', iconBg: 'bg-[#E8F8EF]', iconColor: 'text-[#00AA5B]', trend: null },
+    { label: 'Total Komisi', value: fmt(data.summary.totalCommission), icon: <DollarSign size={20} />, color: 'border-amber-500', iconBg: 'bg-amber-50', iconColor: 'text-amber-500', trend: null },
+    { label: 'Conversion Rate', value: `${data.summary.conversionRate.toFixed(1)}%`, icon: <Target size={20} />, color: 'border-purple-500', iconBg: 'bg-purple-50', iconColor: 'text-purple-500', trend: null },
+  ] : [
+    { label: 'Total Klik', value: '—', icon: <MousePointerClick size={20} />, color: 'border-blue-500', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', trend: null },
+    { label: 'Total Pesanan', value: '—', icon: <ShoppingBag size={20} />, color: 'border-[#00AA5B]', iconBg: 'bg-[#E8F8EF]', iconColor: 'text-[#00AA5B]', trend: null },
+    { label: 'Total Komisi', value: '—', icon: <DollarSign size={20} />, color: 'border-amber-500', iconBg: 'bg-amber-50', iconColor: 'text-amber-500', trend: null },
+    { label: 'Conversion Rate', value: '—', icon: <Target size={20} />, color: 'border-purple-500', iconBg: 'bg-purple-50', iconColor: 'text-purple-500', trend: null },
+  ];
+
+  return (
+    <div className="space-y-6 animate-in">
+      {/* Welcome Banner */}
+      <div className="bg-gradient-to-r from-[#00AA5B] to-[#00924E] rounded-2xl p-6 text-white overflow-hidden relative">
+        <div className="absolute right-0 top-0 w-48 h-full opacity-10">
+          <svg viewBox="0 0 200 200" className="w-full h-full">
+            <circle cx="150" cy="50" r="80" fill="white" />
+            <circle cx="50" cy="150" r="60" fill="white" />
+          </svg>
+        </div>
+        <div className="relative z-10">
+          <p className="text-green-100 text-sm font-medium mb-1">Selamat datang kembali 👋</p>
+          <h2 className="text-2xl font-black text-white">AI Affiliate OS</h2>
+          <p className="text-green-100 text-sm mt-1">
+            {data ? `${data.summary.productsCount} produk aktif · ${data.summary.activeLinks} link affiliate` : 'Intelligence Platform untuk Afiliator Indonesia'}
+          </p>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((s, i) => (
+          <div key={i} className={`stat-card ${s.color}`}>
+            {loading ? (
+              <div className="skeleton h-16 rounded-xl" />
+            ) : (
+              <>
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`p-2 rounded-xl ${s.iconBg} ${s.iconColor}`}>{s.icon}</div>
+                </div>
+                <p className="text-2xl font-black text-slate-800">{s.value}</p>
+                <p className="text-sm text-slate-500 mt-0.5">{s.label}</p>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Top Opportunities */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="section-title">
+              <Target size={18} className="text-[#00AA5B]" />
+              Top Opportunities
+            </h3>
+            <a href="/products" className="text-[#00AA5B] text-xs font-semibold hover:underline flex items-center gap-1">
+              Lihat semua <ChevronRight size={14} />
+            </a>
+          </div>
+          {loading ? (
+            <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="skeleton h-12 rounded-xl" />)}</div>
+          ) : data?.topOpportunities?.length > 0 ? (
+            <div className="space-y-2">
+              {data.topOpportunities.map((o: any, i: number) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition cursor-pointer group">
+                  <div className="w-8 h-8 rounded-lg bg-[#E8F8EF] flex items-center justify-center text-[#00AA5B] font-black text-sm flex-shrink-0">
+                    {i + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{o.productName}</p>
+                    <p className="text-xs text-slate-400 capitalize">{o.platform} · {o.category}</p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <span className="badge-green">{o.score}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-400 text-sm text-center py-6">Belum ada data oportunitas</p>
+          )}
+        </div>
+
+        {/* Recent Orders */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="section-title">
+              <ShoppingBag size={18} className="text-amber-500" />
+              Pesanan Terbaru
+            </h3>
+            <span className="text-xs text-slate-400">7 hari terakhir</span>
+          </div>
+          {loading ? (
+            <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="skeleton h-12 rounded-xl" />)}</div>
+          ) : data?.recentOrders?.length > 0 ? (
+            <div className="space-y-2">
+              {data.recentOrders.slice(0, 5).map((o: any) => (
+                <div key={o.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition">
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                    <ShoppingBag size={16} className="text-amber-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 truncate">{o.product}</p>
+                    <p className="text-xs text-slate-400">{new Date(o.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-bold text-slate-800">Rp {(o.amount / 1000).toFixed(0)}K</p>
+                    <p className="text-xs text-[#00AA5B] font-medium">+Rp {(o.commission / 1000).toFixed(0)}K</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-400 text-sm text-center py-6">Belum ada pesanan terbaru</p>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="card p-5">
+        <h3 className="section-title mb-4">
+          <Sparkles size={18} className="text-[#00AA5B]" />
+          Aksi Cepat
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { href: '/products', icon: <PackageSearch size={22} />, label: 'Cari Produk', color: 'text-blue-500', bg: 'bg-blue-50 hover:bg-blue-100' },
+            { href: '/viral', icon: <AlertTriangle size={22} />, label: 'Viral Alert', color: 'text-red-500', bg: 'bg-red-50 hover:bg-red-100' },
+            { href: '/content', icon: <PenTool size={22} />, label: 'Buat Konten', color: 'text-[#00AA5B]', bg: 'bg-[#E8F8EF] hover:bg-[#d4f2e5]' },
+            { href: '/analytics', icon: <BarChart3 size={22} />, label: 'Lihat Analitik', color: 'text-purple-500', bg: 'bg-purple-50 hover:bg-purple-100' },
+          ].map(a => (
+            <a key={a.href} href={a.href} className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all ${a.bg} group`}>
+              <div className={a.color}>{a.icon}</div>
+              <span className="text-xs font-semibold text-slate-700 text-center">{a.label}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Layout ─── */
+function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  return (
+    <div className="flex min-h-screen bg-[#F3F4F6]">
+      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <div className="flex-1 overflow-auto p-4 lg:p-6">
+          <div className="max-w-7xl mx-auto">
             {children}
           </div>
         </div>
@@ -120,58 +315,18 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Overview() {
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold text-white tracking-tight">Dashboard Overview</h2>
-        <p className="text-slate-400">Selamat datang kembali di pusat komando AI Affiliate OS.</p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { label: "Total Klik", value: "24,592", trend: "+12.5%", color: "blue" },
-          { label: "Konversi (Sales)", value: "1,204", trend: "+8.2%", color: "emerald" },
-          { label: "Estimasi Komisi", value: "Rp 14.5M", trend: "+24.1%", color: "purple" },
-        ].map((stat, i) => (
-          <div key={i} className="relative overflow-hidden bg-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-800/60 shadow-xl group hover:border-slate-700 transition-colors">
-            <div className={`absolute top-0 right-0 p-32 bg-${stat.color}-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-${stat.color}-500/20 transition-colors`}></div>
-            <p className="text-slate-400 text-sm font-medium mb-1">{stat.label}</p>
-            <h3 className="text-3xl font-bold text-white mb-2">{stat.value}</h3>
-            <span className={`text-sm font-medium text-${stat.color}-400 bg-${stat.color}-500/10 px-2 py-1 rounded-md`}>
-              {stat.trend} bulan ini
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-slate-900/50 backdrop-blur-xl p-8 rounded-2xl border border-slate-800/60 shadow-xl mt-8">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400">
-            <Sparkles size={28} />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-white">AI Assistant Siap</h3>
-            <p className="text-slate-400 mt-1">11 Intelligence Engines sedang menganalisis pasar untuk Anda.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+/* ─── App Router ─── */
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<DashboardLayout><Overview /></DashboardLayout>} />
-        <Route path="/knowledge/:productId" element={<DashboardLayout><KnowledgeGraph /></DashboardLayout>} />
+        <Route path="/products" element={<DashboardLayout><ProductsPage /></DashboardLayout>} />
         <Route path="/viral" element={<DashboardLayout><ViralDashboard /></DashboardLayout>} />
         <Route path="/links" element={<DashboardLayout><LinksPage /></DashboardLayout>} />
-        {/* Fallbacks for other routes to prevent blank pages before implementation */}
-        <Route path="/products" element={<DashboardLayout><div className="text-white p-8 bg-slate-900/50 rounded-2xl border border-slate-800">Halaman Produk sedang dibangun.</div></DashboardLayout>} />
-        <Route path="/content" element={<DashboardLayout><div className="text-white p-8 bg-slate-900/50 rounded-2xl border border-slate-800">Halaman AI Content sedang dibangun.</div></DashboardLayout>} />
-        <Route path="/analytics" element={<DashboardLayout><div className="text-white p-8 bg-slate-900/50 rounded-2xl border border-slate-800">Halaman Analitik sedang dibangun.</div></DashboardLayout>} />
+        <Route path="/content" element={<DashboardLayout><AIContentPage /></DashboardLayout>} />
+        <Route path="/analytics" element={<DashboardLayout><AnalyticsPage /></DashboardLayout>} />
+        <Route path="/knowledge/:productId" element={<DashboardLayout><KnowledgeGraph /></DashboardLayout>} />
       </Routes>
     </BrowserRouter>
   );
