@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.gitignore
+.env
+.env.*
+!.env.production.example
+attached_assets
+exports
+.local
+.agents
+*.log

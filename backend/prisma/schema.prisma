@@ -1,0 +1,618 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+// ─────────────────────────────────────────────
+// Core: Users & Auth
+// ─────────────────────────────────────────────
+model User {
+  id             Int             @id @default(autoincrement())
+  email          String          @unique
+  name           String?
+  role           String          @default("user") // user | admin | creator | brand
+  plan           String          @default("basic") // basic | pro | growth | elite
+  telegramChatId String?
+  isAnonymized   Boolean         @default(false)  // GDPR/PDPA flag
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  subscriptions  Subscription[]
+  affiliateLinks AffiliateLink[]
+  aiContents     AIContent[]
+  orders         Order[]
+  shortLinks     ShortLink[]
+  insights       UserInsight[]
+  agentPlans     AgentPlan[]
+  marketplaceListings MarketplaceListing[]
+  marketplaceBids     MarketplaceBid[]
+  contentAssets  ContentAsset[]
+  revenueSnapshots RevenueSnapshot[]
+}
+
+// ─────────────────────────────────────────────
+// Layer 1: Product Opportunity Engine
+// ─────────────────────────────────────────────
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique // skincare | electronics | fashion | food | etc.
+  slug     String    @unique
+  products Product[]
+  patterns ContentPattern[]
+}
+
+model Product {
+  id                    Int                     @id @default(autoincrement())
+  externalId            String?                 @unique // SKU from marketplace
+  name                  String
+  description           String?
+  price                 Decimal
+  commissionRate        Float                   @default(0)
+  category              Category?               @relation(fields: [categoryId], references: [id])
+  categoryId            Int?
+  platform              String                  @default("tiktok") // tiktok | shopee | tokopedia | lazada
+  imageUrl              String?
+  rating                Float                   @default(0)
+  reviews               Int                     @default(0)
+  targetAudience        String?                 // JSON: { gender, ageRange, interest }
+  painPoint             String?
+  mainBenefit           String?
+  bestTimeToPost        String?                 // e.g. "20:00-22:00"
+  bestChannel           String?                 // tiktok | whatsapp | instagram
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  snapshots             ProductSnapshot[]
+  trends                ProductTrend[]
+  affiliateMetrics      ProductAffiliateMetric[]
+  opportunityScores     OpportunityScore[]
+  viralSignals          ViralSignal[]
+  clicks                Click[]
+  orders                Order[]
+  affiliateLinks        AffiliateLink[]
+  aiContents            AIContent[]
+  contentAssets         ContentAsset[]
+  commissionPredictions CommissionPrediction[]
+  shortLinks            ShortLink[]
+  graphRelations        KnowledgeRelation[]
+  insights              ProductInsight[]
+  agentPlanProducts     AgentPlanProduct[]
+  marketplaceListings   MarketplaceListing[]
+}
+
+model ProductSnapshot {
+  id          Int      @id @default(autoincrement())
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   Int
+  price       Decimal
+  sales7d     Int      @default(0)
+  salesGrowth Float    @default(0) // percentage
+  rating      Float    @default(0)
+  reviews     Int      @default(0)
+  stock       Int?
+  capturedAt  DateTime @default(now())
+
+  @@index([productId, capturedAt])
+}
+
+model ProductTrend {
+  id           Int      @id @default(autoincrement())
+  product      Product  @relation(fields: [productId], references: [id])
+  productId    Int
+  trendType    String   // rising | stable | declining | viral
+  momentum     Float    @default(0)
+  period       String   @default("7d") // 1d | 7d | 30d
+  calculatedAt DateTime @default(now())
+
+  @@index([productId, calculatedAt])
+}
+
+model ProductAffiliateMetric {
+  id               Int      @id @default(autoincrement())
+  product          Product  @relation(fields: [productId], references: [id])
+  productId        Int
+  totalClicks      Int      @default(0)
+  totalConversions Int      @default(0)
+  totalCommission  Decimal  @default(0)
+  conversionRate   Float    @default(0)
+  avgOrderValue    Decimal  @default(0)
+  period           String   @default("7d")
+  calculatedAt     DateTime @default(now())
+
+  @@index([productId, calculatedAt])
+}
+
+// ─────────────────────────────────────────────
+// Layer 2: Opportunity Score Engine
+// ─────────────────────────────────────────────
+model OpportunityScore {
+  id               Int      @id @default(autoincrement())
+  product          Product  @relation(fields: [productId], references: [id])
+  productId        Int
+  score            Float    // 0-100
+  salesGrowthScore Float    @default(0) // 30% weight
+  commissionScore  Float    @default(0) // 25% weight
+  conversionScore  Float    @default(0) // 20% weight
+  reviewVelocity   Float    @default(0) // 15% weight
+  competitionIndex Float    @default(0) // 10% weight
+  calculatedAt     DateTime @default(now())
+
+  @@index([productId, calculatedAt])
+  @@index([score])
+}
+
+// ─────────────────────────────────────────────
+// Layer 3: Content Intelligence Engine
+// ─────────────────────────────────────────────
+model ContentAsset {
+  id                 Int                  @id @default(autoincrement())
+  product            Product              @relation(fields: [productId], references: [id])
+  productId          Int
+  user               User?                @relation(fields: [userId], references: [id])
+  userId             Int?
+  contentType        String               // tiktok | instagram | whatsapp | blog | reels
+  hook               String?
+  caption            String?
+  script             String?
+  mediaUrl           String?
+  durationSeconds    Int?
+  ctaType            String?              // soft | hard | story | discount
+  dnaScore           Float?               // Content DNA quality score 0-100
+  coachFeedback      String?              // AI coach suggestion
+  createdAt          DateTime             @default(now())
+  performance        ContentPerformance[]
+  contentClicks      ContentClick[]
+  contentConversions ContentConversion[]
+  dnaAnalyses        ContentDNAResult[]
+}
+
+model ContentPerformance {
+  id             Int          @id @default(autoincrement())
+  contentAsset   ContentAsset @relation(fields: [contentAssetId], references: [id])
+  contentAssetId Int
+  views          Int          @default(0)
+  likes          Int          @default(0)
+  shares         Int          @default(0)
+  comments       Int          @default(0)
+  ctr            Float        @default(0)
+  conversionRate Float        @default(0)
+  recordedAt     DateTime     @default(now())
+
+  @@index([contentAssetId, recordedAt])
+}
+
+model ContentClick {
+  id             Int          @id @default(autoincrement())
+  contentAsset   ContentAsset @relation(fields: [contentAssetId], references: [id])
+  contentAssetId Int
+  clickCount     Int          @default(1)
+  source         String?      // direct | social | whatsapp
+  recordedAt     DateTime     @default(now())
+
+  @@index([contentAssetId, recordedAt])
+}
+
+model ContentConversion {
+  id             Int          @id @default(autoincrement())
+  contentAsset   ContentAsset @relation(fields: [contentAssetId], references: [id])
+  contentAssetId Int
+  orders         Int          @default(0)
+  revenue        Decimal      @default(0)
+  commission     Decimal      @default(0)
+  recordedAt     DateTime     @default(now())
+
+  @@index([contentAssetId, recordedAt])
+}
+
+// ─────────────────────────────────────────────
+// Layer 4: Content DNA Engine (Winning Pattern)
+// ─────────────────────────────────────────────
+model ContentPattern {
+  id            Int       @id @default(autoincrement())
+  category      Category  @relation(fields: [categoryId], references: [id])
+  categoryId    Int
+  platform      String    // tiktok | shopee | tokopedia
+  hookTemplate  String    // e.g. "Jangan beli sebelum lihat ini"
+  avgCtr        Float     @default(0)
+  avgConversion Float     @default(0)
+  avgDuration   Int?      // seconds
+  ctaType       String?
+  sampleSize    Int       @default(0)
+  confidence    Float     @default(0) // 0-1
+  discoveredAt  DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([categoryId, platform, hookTemplate])
+  @@index([categoryId, platform])
+}
+
+model ContentDNAResult {
+  id             Int          @id @default(autoincrement())
+  contentAsset   ContentAsset @relation(fields: [contentAssetId], references: [id])
+  contentAssetId Int
+  hookScore      Float        @default(0)    // 0-100
+  ctaScore       Float        @default(0)
+  paceScore      Float        @default(0)
+  emotionScore   Float        @default(0)
+  overallScore   Float        @default(0)
+  suggestions    String?      // JSON: array of improvement suggestions
+  analyzedAt     DateTime     @default(now())
+
+  @@index([contentAssetId])
+}
+
+// ─────────────────────────────────────────────
+// Layer 5: Viral Early Warning System
+// ─────────────────────────────────────────────
+model ViralSignal {
+  id              Int      @id @default(autoincrement())
+  product         Product  @relation(fields: [productId], references: [id])
+  productId       Int
+  salesTrend      Float    @default(0)    // normalized 0-1
+  reviewTrend     Float    @default(0)
+  searchTrend     Float    @default(0)
+  commissionScore Float    @default(0)
+  viralScore      Float    @default(0)    // composite 0-100
+  confidence      Float    @default(0)    // 0-1
+  predictedAt     DateTime @default(now())
+  predictedFor    DateTime                // e.g. +72h from now
+  alerted         Boolean  @default(false)
+
+  @@index([productId, predictedAt])
+  @@index([viralScore])
+}
+
+// ─────────────────────────────────────────────
+// Layer 6: Affiliate Knowledge Graph
+// ─────────────────────────────────────────────
+model Creator {
+  id          Int      @id @default(autoincrement())
+  name        String
+  platform    String   // tiktok | instagram | youtube
+  handle      String
+  followers   Int      @default(0)
+  avgViews    Int      @default(0)
+  niche       String?  // skincare | tech | fashion
+  contactInfo String?  // encrypted/anonymized
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  graphRelations    KnowledgeRelation[]
+  marketplaceListings MarketplaceListing[]
+  marketplaceBids   MarketplaceBid[]
+}
+
+model Audience {
+  id         Int      @id @default(autoincrement())
+  segment    String   @unique // e.g. "female_18-25_skincare"
+  gender     String?
+  ageMin     Int?
+  ageMax     Int?
+  interest   String?
+  location   String?
+  createdAt  DateTime @default(now())
+
+  graphRelations KnowledgeRelation[]
+}
+
+// Flexible graph relation table (Produk → Kategori → Konten → Creator → Audience → Conversion)
+model KnowledgeRelation {
+  id           Int       @id @default(autoincrement())
+  product      Product?  @relation(fields: [productId], references: [id])
+  productId    Int?
+  creator      Creator?  @relation(fields: [creatorId], references: [id])
+  creatorId    Int?
+  audience     Audience? @relation(fields: [audienceId], references: [id])
+  audienceId   Int?
+  relationType String    // product_to_audience | creator_to_product | audience_to_conversion
+  weight       Float     @default(1.0) // strength of relation
+  metadata     String?   // JSON additional data
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([productId])
+  @@index([creatorId])
+  @@index([audienceId])
+}
+
+// Insight: "Produk A sukses untuk wanita 18-25 malam hari via WhatsApp"
+model ProductInsight {
+  id          Int      @id @default(autoincrement())
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   Int
+  insightType String   // audience | channel | timing | content
+  key         String   // e.g. "best_audience"
+  value       String   // e.g. "female_18-25"
+  confidence  Float    @default(0)
+  sampleSize  Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([productId, insightType, key])
+  @@index([productId])
+}
+
+model UserInsight {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  insightType String   // recommended_category | best_performing_channel | etc.
+  value       String
+  score       Float    @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, insightType])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────
+// Layer 7: AI Affiliate Agent
+// ─────────────────────────────────────────────
+model AgentPlan {
+  id          Int                @id @default(autoincrement())
+  user        User               @relation(fields: [userId], references: [id])
+  userId      Int
+  goal        String             // e.g. "Cari peluang terbaik minggu ini"
+  status      String             @default("pending") // pending | running | completed | failed
+  result      String?            // JSON: final plan output
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  products    AgentPlanProduct[]
+}
+
+model AgentPlanProduct {
+  id          Int       @id @default(autoincrement())
+  plan        AgentPlan @relation(fields: [planId], references: [id])
+  planId      Int
+  product     Product   @relation(fields: [productId], references: [id])
+  productId   Int
+  scriptJson  String?   // JSON: generated TikTok/Reels/WA scripts
+  shortLinkId Int?
+  addedAt     DateTime  @default(now())
+
+  @@index([planId])
+}
+
+// ─────────────────────────────────────────────
+// Layer 8: Shortlink Service
+// ─────────────────────────────────────────────
+model ShortLink {
+  id          Int       @id @default(autoincrement())
+  shortId     String    @unique
+  targetUrl   String
+  product     Product?  @relation(fields: [productId], references: [id])
+  productId   Int?
+  user        User?     @relation(fields: [userId], references: [id])
+  userId      Int?
+  campaignId  String?
+  totalClicks Int       @default(0)
+  createdAt   DateTime  @default(now())
+  clicks      ShortLinkClick[]
+
+  @@index([shortId])
+  @@index([userId])
+}
+
+model ShortLinkClick {
+  id         Int       @id @default(autoincrement())
+  shortLink  ShortLink @relation(fields: [shortLinkId], references: [id])
+  shortLinkId Int
+  ip         String?   // anonymized for GDPR
+  userAgent  String?
+  referer    String?
+  country    String?
+  clickedAt  DateTime  @default(now())
+
+  @@index([shortLinkId, clickedAt])
+}
+
+// ─────────────────────────────────────────────
+// Layer 9: Creator Marketplace
+// ─────────────────────────────────────────────
+model MarketplaceListing {
+  id              Int      @id @default(autoincrement())
+  creator         Creator? @relation(fields: [creatorId], references: [id])
+  creatorId       Int?
+  brand           User?    @relation(fields: [brandUserId], references: [id])
+  brandUserId     Int?
+  product         Product? @relation(fields: [productId], references: [id])
+  productId       Int?
+  type            String   @default("offer") // offer | request
+  title           String
+  description     String?
+  budget          Decimal?
+  commission      Float?
+  status          String   @default("open") // open | matched | closed | completed
+  stripeSessionId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  bids            MarketplaceBid[]
+}
+
+model MarketplaceBid {
+  id          Int                @id @default(autoincrement())
+  listing     MarketplaceListing @relation(fields: [listingId], references: [id])
+  listingId   Int
+  creator     Creator?           @relation(fields: [creatorId], references: [id])
+  creatorId   Int?
+  bidder      User?              @relation(fields: [bidderId], references: [id])
+  bidderId    Int?
+  message     String?
+  proposedRate Float?
+  status      String             @default("pending") // pending | accepted | rejected
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([listingId])
+}
+
+// ─────────────────────────────────────────────
+// Layer 10: Revenue Intelligence
+// ─────────────────────────────────────────────
+model RevenueSnapshot {
+  id              Int      @id @default(autoincrement())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          Int
+  date            DateTime @db.Date
+  totalClicks     Int      @default(0)
+  totalConversions Int     @default(0)
+  totalCommission Decimal  @default(0)
+  totalOrders     Int      @default(0)
+  topProductId    Int?
+  topChannel      String?
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model CommissionPrediction {
+  id             Int      @id @default(autoincrement())
+  product        Product  @relation(fields: [productId], references: [id])
+  productId      Int
+  inputViews     Int      @default(10000)
+  inputCtr       Float    @default(0)
+  minimumComm    Decimal  @default(0)
+  expectedComm   Decimal  @default(0)
+  optimisticComm Decimal  @default(0)
+  period         String   @default("7d")
+  calculatedAt   DateTime @default(now())
+
+  @@index([productId, calculatedAt])
+}
+
+// ─────────────────────────────────────────────
+// Core: Clicks, Orders, Affiliate Links
+// ─────────────────────────────────────────────
+model Click {
+  id        Int      @id @default(autoincrement())
+  product   Product  @relation(fields: [productId], references: [id])
+  productId Int
+  source    String?  // tiktok | whatsapp | direct
+  timestamp DateTime @default(now())
+  count     Int      @default(1)
+
+  @@index([productId, timestamp])
+}
+
+model Order {
+  id         Int      @id @default(autoincrement())
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  Int
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+  amount     Decimal
+  commission Decimal
+  platform   String   @default("tiktok")
+  createdAt  DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model AffiliateLink {
+  id          Int      @id @default(autoincrement())
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   Int
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  url         String
+  shortUrl    String?
+  platform    String   @default("tiktok")
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────
+// AI Content Generation
+// ─────────────────────────────────────────────
+model AIContent {
+  id            Int      @id @default(autoincrement())
+  product       Product  @relation(fields: [productId], references: [id])
+  productId     Int
+  user          User     @relation(fields: [userId], references: [id])
+  userId        Int
+  contentType   String   @default("caption") // caption | hook | whatsapp | blog | tiktok_script | reels_script
+  generatedText String
+  platform      String   @default("tiktok")
+  promptVersion String?  // for A/B tracking
+  createdAt     DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// WhatsApp Templates
+// ─────────────────────────────────────────────
+model WhatsAppTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  content   String
+  category  String   @default("promo") // promo | follow_up | closing
+  createdAt DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// Billing & Subscriptions
+// ─────────────────────────────────────────────
+model BillingPlan {
+  id            Int            @id @default(autoincrement())
+  name          String         @unique // basic | pro | growth | elite
+  displayName   String
+  price         Decimal
+  features      String         // JSON stringified array
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id        Int         @id @default(autoincrement())
+  user      User        @relation(fields: [userId], references: [id])
+  userId    Int
+  plan      BillingPlan @relation(fields: [planId], references: [id])
+  planId    Int
+  startDate DateTime    @default(now())
+  endDate   DateTime?
+  status    String      @default("active") // active | cancelled | expired
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────
+// Events (Feedback Loop / Flywheel)
+// ─────────────────────────────────────────────
+model Event {
+  id         Int      @id @default(autoincrement())
+  eventType  String   // product_view | click | conversion | content_posted | commission_earned | viral_alert
+  entityId   Int      // references product/content/link id
+  entityType String   // product | content | link | shortlink
+  payload    String?  // JSON extra data
+  userId     Int?     // optional user context
+  createdAt  DateTime @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+}
+
+// ─────────────────────────────────────────────
+// Competitor Intelligence
+// ─────────────────────────────────────────────
+model CompetitorProfile {
+  id          Int      @id @default(autoincrement())
+  platform    String   // tiktok | instagram
+  handle      String
+  followers   Int      @default(0)
+  avgViews    Int      @default(0)
+  topProducts String?  // JSON: array of product info
+  postFreq    Float?   // posts per week
+  bestPostTime String?
+  analyzedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([platform, handle])
+}
